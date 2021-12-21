@@ -1,38 +1,50 @@
 const express = require('express')
 const router = express.Router()
-const Author = require('../models/author')
-const Book = require('../models/book')
+
+const AuthorModel = require('../models/author')
+const BookModel = require('../models/book')
+
+const { Op } = require('sequelize');
 
 // All Authors Route
 router.get('/', async (req, res) => {
   let searchOptions = {}
   if (req.query.name != null && req.query.name !== '') {
-    searchOptions.name = new RegExp(req.query.name, 'i')
+    searchOptions.name = req.query.name;
   }
   try {
-    const authors = await Author.find(searchOptions)
+    const filter = { 
+      name: {
+        [Op.substring]: searchOptions.name,
+      },
+    };
+    let authors = await AuthorModel.findAll({ limit: 50, order: [['id', 'DESC']] });
+    if (searchOptions.name) {
+      authors = await AuthorModel.findAll({ where: { ...filter }, limit: 50, order: [['id', 'DESC']] });
+    }
     res.render('authors/index', {
       authors: authors,
       searchOptions: req.query
-    })
-  } catch {
+    });
+  } catch (error) {
+    console.log(error);
     res.redirect('/')
   }
 })
 
 // New Author Route
 router.get('/new', (req, res) => {
-  res.render('authors/new', { author: new Author() })
+  res.render('authors/new', { author: new AuthorModel() })
 })
 
 // Create Author Route
-router.post('/', async (req, res) => {
-  const author = new Author({
+router.post('/new', async (req, res) => {
+  const author = new AuthorModel({
     name: req.body.name
-  })
+  });
   try {
     const newAuthor = await author.save()
-    res.redirect(`authors/${newAuthor.id}`)
+    res.redirect(`/authors/${newAuthor.id}`)
   } catch {
     res.render('authors/new', {
       author: author,
@@ -43,8 +55,8 @@ router.post('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const author = await Author.findById(req.params.id)
-    const books = await Book.find({ author: author.id }).limit(6).exec()
+    const author = await AuthorModel.findByPk(req.params.id)
+    const books = await BookModel.findAll({ where: { authorId: author.id }, limit: 50, order: [['id', 'DESC']] })
     res.render('authors/show', {
       author: author,
       booksByAuthor: books
@@ -56,7 +68,7 @@ router.get('/:id', async (req, res) => {
 
 router.get('/:id/edit', async (req, res) => {
   try {
-    const author = await Author.findById(req.params.id)
+    const author = await AuthorModel.findByPk(req.params.id)
     res.render('authors/edit', { author: author })
   } catch {
     res.redirect('/authors')
@@ -66,7 +78,7 @@ router.get('/:id/edit', async (req, res) => {
 router.put('/:id', async (req, res) => {
   let author
   try {
-    author = await Author.findById(req.params.id)
+    author = await AuthorModel.findByPk(req.params.id)
     author.name = req.body.name
     await author.save()
     res.redirect(`/authors/${author.id}`)
@@ -85,8 +97,12 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   let author
   try {
-    author = await Author.findById(req.params.id)
-    await author.remove()
+    author = await AuthorModel.findByPk(req.params.id)
+    const hasBooks = await BookModel.findAll({ where: { authorId: author.id }, limit: 2 });
+    if (hasBooks.length > 0) {
+      throw new Error('Author has book(s)');
+    }
+    await author.destroy();
     res.redirect('/authors')
   } catch {
     if (author == null) {

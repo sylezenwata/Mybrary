@@ -20,14 +20,19 @@ app.use(methodOverride('_method'))
 app.use(express.static('public'))
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }))
 
-const mongoose = require('mongoose')
-mongoose.connect(process.env.DATABASE_URL, { useNewUrlParser: true })
-const db = mongoose.connection
-db.on('error', error => console.error(error))
-db.once('open', () => console.log('Connected to Mongoose'))
-
 app.use('/', indexRouter)
 app.use('/authors', authorRouter)
 app.use('/books', bookRouter)
 
-app.listen(process.env.PORT || 3000)
+const DB = require('./config/database');
+const port = process.env.PORT || 3000;
+DB.authenticate()
+  .then(() => {
+    console.log('Database connected')
+    app.listen(port, () => console.log(`Server running on port ${port}`));
+  })
+  .catch((error) => {
+    console.error(`Database connection error: ${error}`);
+    process.exit(1);
+  });
+

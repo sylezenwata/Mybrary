@@ -1,45 +1,56 @@
-const mongoose = require('mongoose')
+const { DataTypes } = require('sequelize');
 
-const bookSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
+const DB = require('../config/database');
+const AuthorModel = require('./author');
+
+const BookModel = DB.define(
+  'book', 
+  {
+    id: {
+      autoIncrement: true,
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+    },
+    publishDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    pageCount: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    coverImage: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    // coverImagePath: {
+    //   type: DataTypes.STRING,
+    //   get() {
+    //     return `data:${this.getDataValue('coverImageType')};base64,${this.getDataValue('coverImage').toString('base64')}`;
+    //   },
+    //   set(value) {
+    //     throw new Error('Do not try to set the `coverImagePath` value!');
+    //   }
+    // },
   },
-  description: {
-    type: String
-  },
-  publishDate: {
-    type: Date,
-    required: true
-  },
-  pageCount: {
-    type: Number,
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  coverImage: {
-    type: Buffer,
-    required: true
-  },
-  coverImageType: {
-    type: String,
-    required: true
-  },
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'Author'
+  {
+    // underscored: true,
+    timestamps: true,
   }
-})
+);
 
-bookSchema.virtual('coverImagePath').get(function() {
-  if (this.coverImage != null && this.coverImageType != null) {
-    return `data:${this.coverImageType};charset=utf-8;base64,${this.coverImage.toString('base64')}`
-  }
-})
+BookModel.belongsTo(AuthorModel);
 
-module.exports = mongoose.model('Book', bookSchema)
+BookModel.sync({ force: false })
+  .then(() => {})
+  .catch((error) => console.error(`Book model error: ${error}`));
+
+module.exports = BookModel;

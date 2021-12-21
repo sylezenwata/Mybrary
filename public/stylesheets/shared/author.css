@@ -1,7 +1,8 @@
 .author-row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
 }
 
 .author-name {

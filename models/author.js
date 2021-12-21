@@ -1,23 +1,28 @@
-const mongoose = require('mongoose')
-const Book = require('./book')
+const { DataTypes } = require('sequelize');
 
-const authorSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
+const DB = require('../config/database');
+const BookModel = require('./book');
+
+const AuthorModel = DB.define(
+  'author', {
+    id: {
+      autoIncrement: true,
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    timestamps: true,
   }
-})
+);
 
-authorSchema.pre('remove', function(next) {
-  Book.find({ author: this.id }, (err, books) => {
-    if (err) {
-      next(err)
-    } else if (books.length > 0) {
-      next(new Error('This author has books still'))
-    } else {
-      next()
-    }
-  })
-})
+AuthorModel.sync({ force: false })
+  .then(() => {})
+  .catch((error) => console.error(`Author model error: ${error}`));
 
-module.exports = mongoose.model('Author', authorSchema)
+module.exports = AuthorModel;
